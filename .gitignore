@@ -1,0 +1,14 @@
+# Исполняемые файлы Go
+*.exe
+*.env
+*.exe*
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+GoChat
+
+# IDE и редакторы
+.idea/
+.vscode/

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>GoChat</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 40px auto; 
+            padding: 20px; 
+            position: relative;
+        }
+
+        .chat-container {
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .header h2 {
+            font-size: 2.5em;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        /* Блок авторизации */
+        .auth-box {
+            display: flex;
+            gap: 8px;
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 6px;
+            width: 100%;
+            box-sizing: border-box;
+            justify-content: center;
+        }
+
+        .auth-box input {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 120px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+            background: #e6f7fa;
+            padding: 8px 16px;
+            border-radius: 6px;
+        }
+
+        #messages { 
+            border: 1px solid #ccc; 
+            height: 300px; 
+            overflow-y: scroll; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            background: #fff;
+            border-radius: 4px;
+        }
+        
+        .msg { 
+            margin-bottom: 10px; 
+            padding: 10px; 
+            background: #e6f7fa; 
+            border-left: 4px solid #00ADD8;
+            border-radius: 6px; 
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .author {
+            font-weight: bold;
+            font-size: 0.85em;
+            color: #008CAE;
+        }
+
+        .text {
+            font-size: 1em;
+            color: #111;
+            word-break: break-word;
+        }
+
+        .time { 
+            font-size: 0.75em; 
+            color: #888; 
+            align-self: flex-end; 
+        }
+
+        .input-box { display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 8px; }
+
+        button { 
+            padding: 8px 16px; 
+            cursor: pointer; 
+            background-color: #00ADD8;
+            color: white;             
+            border: none; 
+            border-radius: 4px; 
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #008CAE;
+        }
+
+        .btn-logout {
+            background-color: #ff5c5c;
+            padding: 4px 10px;
+            font-size: 0.8em;
+        }
+        .btn-logout:hover {
+            background-color: #e04343;
+        }
+
+        .gopher-peeking {
+            position: fixed;
+            bottom: -100px;
+            left: -25px;
+            width: 400px;
+            z-index: 1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <img src="https://raw.githubusercontent.com/golang-samples/gopher-vector/master/gopher.png" alt="Go Gopher" class="gopher-peeking">
+
+    <div class="chat-container">
+        <div class="header">
+            <h2>GoChat</h2>
+
+            <!-- Форма входа / регистрации -->
+            <div id="authSection" class="auth-box">
+                <input type="text" id="usernameInput" placeholder="Логин">
+                <input type="password" id="passwordInput" placeholder="Пароль">
+                <button onclick="login()">Войти</button>
+                <button onclick="register()">Регистрация</button>
+            </div>
+
+            <!-- Блок с текущим вошедшим пользователем -->
+            <div id="userSection" class="user-info" style="display: none;">
+                <span>Вы вошли как: <b id="currentUsername"></b></span>
+                <button class="btn-logout" onclick="logout()">Выйти</button>
+            </div>
+        </div>
+
+        <div id="messages"></div>
+
+        <div class="input-box">
+            <input type="text" id="textInput" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()">Отправить</button>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = JSON.parse(localStorage.getItem('chat_user')) || null;
+
+        function updateAuthUI() {
+            const authSection = document.getElementById('authSection');
+            const userSection = document.getElementById('userSection');
+            const currentUsername = document.getElementById('currentUsername');
+
+            if (currentUser) {
+                authSection.style.display = 'none';
+                userSection.style.display = 'flex';
+                currentUsername.textContent = currentUser.username;
+            } else {
+                authSection.style.display = 'flex';
+                userSection.style.display = 'none';
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('usernameInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+
+            if (!username || !password) {
+                alert('Введите логин и пароль!');
+                return;
+            }
+
+            try {
+                const res = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('Регистрация успешна! Теперь нажмите "Войти".');
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось зарегистрироваться'));
+                }
+            } catch (err) {
+                console.error("Ошибка сети:", err);
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('usernameInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+
+            if (!username || !password) {
+                alert('Введите логин и пароль!');
+                return;
+            }
+
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Берем id из data.user.id, а не data.user_id
+                    const userId = data.user ? data.user.id : data.user_id; 
+                    currentUser = { id: userId, username: username };
+                    localStorage.setItem('chat_user', JSON.stringify(currentUser));
+                    updateAuthUI();
+                    loadMessages();
+                } else {
+                    alert('Ошибка входа: ' + (data.error || 'Неверный логин или пароль'));
+                }
+            } catch (err) {
+                console.error("Ошибка сети:", err);
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('chat_user');
+            updateAuthUI();
+        }
+
+        async function loadMessages() {
+            try {
+                const res = await fetch('/messages');
+                const data = await res.json();
+                const container = document.getElementById('messages');
+                container.innerHTML = '';
+
+                if (Array.isArray(data)) {
+                    data.forEach(m => {
+                        const time = new Date(m.post_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const authorName = m.user_name || `Пользователь #${m.user_id}`;
+
+                        container.innerHTML += `
+                            <div class="msg">
+                                <span class="author">${authorName}</span>
+                                <span class="text">${m.text}</span>
+                                <span class="time">${time}</span>
+                            </div>`;
+                    });
+                }
+                container.scrollTop = container.scrollHeight;
+            } catch (err) {
+                console.error("Ошибка при загрузке сообщений:", err);
+            }
+        }
+
+        async function sendMessage() {
+            if (!currentUser) {
+                alert('Сначала зарегистрируйтесь или войдите в аккаунт!');
+                return;
+            }
+
+            const input = document.getElementById('textInput');
+            if (!input.value.trim()) return;
+
+            try {
+                await fetch('/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        text: input.value,
+                        user_id: currentUser.id
+                    })
+                });
+
+                input.value = '';
+                loadMessages();
+            } catch (err) {
+                console.error("Ошибка отправки сообщения:", err);
+            }
+        }
+
+        // Инициализация при старте
+        updateAuthUI();
+        loadMessages();
+        setInterval(loadMessages, 3000);
+    </script>
+</body>
+</html>
