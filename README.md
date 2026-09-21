@@ -23,7 +23,7 @@
 
 1. Клонируйте репозиторий на свой компьютер:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/pavlovvity-netizen/GoChat
    cd GoChat
    ```
 
