@@ -18,7 +18,7 @@ WORKDIR /app
 
 # Копируем бинарник и статику из стадии сборки
 COPY --from=builder /app/main .
-COPY --from=builder /app/index.html .
+COPY --from=builder /app/frontend ./frontend
 
 EXPOSE 8080
 

@@ -48,9 +48,7 @@ func main() {
 	authSvc := service.NewUserService(userRepo)
 	authHandler := handler.NewUserHandler(authSvc)
 
-	http.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "index.html")
-	})
+	http.Handle("/", http.FileServer(http.Dir("./frontend")))
 
 	http.HandleFunc("POST /register", authHandler.RegisterUser)
 	http.HandleFunc("POST /login", authHandler.LoginUser)
