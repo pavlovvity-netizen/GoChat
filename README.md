@@ -25,6 +25,7 @@
    ```bash
    git clone https://github.com/pavlovvity-netizen/GoChat
    cd GoChat
+   cp .env.example .env
    ```
 
 2. Запустите приложение и базу данных в Docker-контейнерах:
